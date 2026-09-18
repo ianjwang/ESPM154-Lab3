@@ -1,0 +1,185 @@
+---
+title: 'ESPM 154, Lab 3, Part A: Mapping Genetic Diversity'
+output:
+  html_document: default
+---
+
+## Overview and Goals
+
+In this lab, we will begin working with SNP data in VCF format, calculate basic genetic statistics, and learn how to construct maps of genetic diversity.
+
+Goals--
+1: Learn how VCF files are formatted and how we work with them in R.
+2: Calculate allele frequencies and metrics of genetic diversity.
+3: Construct maps of genetic diversity using a spatial moving window approach.
+
+### Set up the R session ###
+
+Load required packages...
+```{r packages, include=FALSE}
+# Start with a clean slate...
+rm(list = ls()) 
+
+# Make a list of the packages we need, check whether they're installed, and install the ones we're missing...
+required.pkg <- c("devtools", "sp", "gt", "sf", "terra", "wingen", "vcfR", "adegenet", "maps")
+pkgs.not.installed <- required.pkg[!sapply(required.pkg, function(p) require(p, character.only=T))]
+if (length(pkgs.not.installed) > 0) install.packages(pkgs.not.installed, dependencies=TRUE)
+
+# Load the required libraries...
+lapply(required.pkg, library, character.only = TRUE) 
+
+devtools::install_github("TheWangLab/algatr")
+library(algatr)
+```
+
+Set markdown preferences...
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+--------------------------------------------
+
+## Part 1: Examining VCF data in R ##
+
+Let's load an example VCF file in R. This one contains SNP data for samples from the western fence lizard (Sceloporus occidentalis).
+```{r, warning=FALSE}
+load_algatr_example()
+```
+
+This example dataset contains four objects, one of which is the VCF data. Let's take a look at some of the basic information for the VCF file.
+```{r, warning = F}
+head(liz_vcf)
+```
+
+We can also call the head() function to show us the first few rows of each section of the liz_vcf object.
+```{r}
+head(liz_vcf)
+```
+
+**Take a moment to answer Question 1 on the assignment.**
+
+Let's also take a look at some of the genotype data.  Note that the first column is the format of the data and "GT" means genotype (there are other forms of data that can be included in a VCF files, but genotype data is the most common). The next columns are each one individual, and the rows are the SNP loci (one locus per row).
+```{r}
+liz_vcf@gt[1:10,1:9]
+```
+
+**Take a moment to answer Question 2 on the assignment.**
+
+We can perform some basic calculations on the VCF data. For example, we can calculate the allele frequencies for any of the SNP loci using the `maf()` function.
+```{r}
+af <- maf(liz_vcf, element = 1)
+af[1:10,] # Show the allele frequencies for the first 10 loci
+```
+**Take a moment to answer Question 3 on the assignment.**
+
+We can also calculate the heterozygosity at each SNP using the `gt.to.popsum()` function.
+```{r}
+popsums <- gt.to.popsum(liz_vcf)
+popsums[1:10,] # Show the heterozygosities for the first 10 loci
+```
+
+This table shows us the number of individuals with data for each SNP locus (n), the counts for the different alleles at each locus (Allele_counts), the heterozygosity at each locus (He), and the effective number of alleles at each locus (Ne, not to be confused with effective population size). 
+
+Let's look at whether there appears to be a relationship between the frequency of the major allele and the heterozygosity at each SNP.
+```{r}
+plot(af[,4], popsums$He, xlab = "Allele Frequency", ylab = "Heterozygosity", pch = 20)
+```
+**Take a moment to answer Question 4 on the assignment.**
+
+
+## Part 2: Mapping genetic diversity ##
+
+Next, let's look at how genetic diversity is distributed across the landscape. The first step is to project the coordinates in the data to a rectangular projection system. We will do that using the st_transform() function. 
+```{r}
+coords_longlat <- st_as_sf(liz_coords, coords = c("x", "y"), crs = "+proj=longlat") # Extract the sample coordinates as an sf object
+coords_proj <- st_transform(coords_longlat, crs = 3310) # Project the coordinates to the new projection system
+coords_proj
+```
+
+Take a quick look at the object for the  coordinates. You'll see that the coordinates are now in the Albers equidistant projection system (CRS) instead of a latitude-longitude system.
+
+Now let's plot the points so we can see where they are.
+```{r plot-points}
+# Get a California boundary
+ca <- st_as_sf(
+  map("state", "california", fill = TRUE, plot = FALSE)
+)
+ca <- st_transform(ca, crs(coords_proj))
+
+# Plot California and the sampling locations
+plot(st_geometry(ca), col = "grey95", border = "grey50")
+plot(st_geometry(coords_proj), add = TRUE, pch = 20, cex = 1)
+```
+
+Before we can map genetic diversity, we need to set up a raster that we will fill with our genetic diversity values. We can do that using the coords_to_raster() function, which will set up a raster around our sample coordinates.
+
+Usage
+ coords_to_raster(coords, res = 1, buffer = 0, plot = FALSE)
+Arguments
+ coords: coordinates of samples as sf points, a SpatVector, a two-column matrix, or a data.frame with x and y coordinates
+ res: desired resolution of raster (defaults to 1). Can be a single value for square cells or a vector with two values representing x and y resolutions
+ buffer: size of buffer to add to edge of raster (defaults to 0)
+ plot: whether to plot resulting raster with coords (defaults to FALSE)
+
+Here, we will create a raster layer with res = 50000. The resolution is in units corresponding to the system of the coordinates, which in this case means meters. So, res = 50000 gives us a raster with a resolution of 50 km.
+```{r}
+liz_lyr <- coords_to_raster(coords_proj, res = 50000, buffer = 5, plot = TRUE)
+```
+
+Now, let's preview how many samples would be included in moving windows that are 3x3 cells. We can do this with the preview_gd function(). 
+
+Usage
+ preview_gd(lyr, coords, wdim = 3, fact = 0, sample_count = TRUE, plot = TRUE)
+Arguments
+ lyr: SpatRaster or RasterLayer to slide the window across 
+ coords: coordinates of samples as sf points, a two-column matrix, or a data.frame representing x and y coordinates (see Details for important information about projections)
+ wdim: dimensions (height x width) of window; if only one value is provided, a square window is created (defaults to 3 x 3 window)
+ fact: aggregation factor to apply to lyr (defaults to 0; note: increasing this value reduces computational time)
+ sample_count: whether to create plot of sample counts for each cell (defaults to TRUE)
+ plot: whether to plot results (default = TRUE)
+
+Let's start with a window size of 3x3 cells.
+```{r}
+sample_count <- preview_gd(lyr = liz_lyr, coords = coords_proj, wdim = 7, fact = 0)
+```
+
+The output plot from the preview_gd() function shows us the points for our samples and the area covered by an example window. We can also plot the number of samples in each of the windows using the ggplot_count() function.
+```{r}
+ggplot_count(sample_count)
+```
+
+Now we use the window_gd() function to create the raster of genetic diversity.
+
+Usage
+ window_gd(gen, coords, lyr, stat = "pi", wdim = 3, fact = 0)
+Arguments
+ gen: genetic data either as an object of type vcf
+ coords: coordinates of samples as sf points, a two-column matrix, or a data.frame representing x and y coordinates 
+ lyr: SpatRaster or RasterLayer to slide the window across 
+ stat: genetic diversity statistic to calculate. Options include "pi" for nucleotide diversity, "Ho" for observed heterozygosity, and "allelic_richness_ for average number of alleles across all sites.
+ wdim: dimensions (height x width) of window; if only one value is provided, a square window is created (defaults to 3 x 3 window)
+ fact: aggregation factor to apply to lyr (defaults to 0)
+
+```{r, warning = F}
+wgd <- window_gd(liz_vcf, coords_proj, liz_lyr, stat = "pi", wdim = 3, fact = 0)
+wgd
+```
+
+And plot the resulting raster...
+```{r}
+ggplot_gd(wgd)
+```
+
+Finally, generate a moving window map of heterozygosity for this dataset. If you look at the map of sample counts we produced above you'll notice that many of the windows have very few samples when we used 3x3 windows. So, for this map of heterozygosity, use windows that are 7x7 cells instead.
+```{r, warning = F}
+
+
+
+```
+**Based on the map you generated, answer Question 5 on the assignment.**
+
+---------------------
+
+## The End ##
+
