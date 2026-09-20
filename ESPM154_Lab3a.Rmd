@@ -21,14 +21,14 @@ Load required packages...
 rm(list = ls()) 
 
 # Make a list of the packages we need, check whether they're installed, and install the ones we're missing...
-required.pkg <- c("devtools", "sp", "gt", "sf", "terra", "wingen", "vcfR", "adegenet", "maps")
+required.pkg <- c("pak", "sp", "gt", "sf", "terra", "wingen", "vcfR", "adegenet", "maps")
 pkgs.not.installed <- required.pkg[!sapply(required.pkg, function(p) require(p, character.only=T))]
 if (length(pkgs.not.installed) > 0) install.packages(pkgs.not.installed, dependencies=TRUE)
 
 # Load the required libraries...
 lapply(required.pkg, library, character.only = TRUE) 
 
-devtools::install_github("TheWangLab/algatr")
+pak::pak("TheWangLab/algatr")
 library(algatr)
 ```
 
