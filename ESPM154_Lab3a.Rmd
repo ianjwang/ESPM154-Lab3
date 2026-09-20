@@ -20,16 +20,17 @@ Load required packages...
 # Start with a clean slate...
 rm(list = ls()) 
 
+install.packages(c("pak", "fs", "sf", "terra", "s2", "V8"))
+pak::pak("TheWangLab/algatr")
+library(algatr)
+
 # Make a list of the packages we need, check whether they're installed, and install the ones we're missing...
-required.pkg <- c("pak", "sp", "gt", "sf", "terra", "wingen", "vcfR", "adegenet", "maps")
+required.pkg <- c("sp", "gt", "wingen", "vcfR", "adegenet", "maps")
 pkgs.not.installed <- required.pkg[!sapply(required.pkg, function(p) require(p, character.only=T))]
 if (length(pkgs.not.installed) > 0) install.packages(pkgs.not.installed, dependencies=TRUE)
 
 # Load the required libraries...
 lapply(required.pkg, library, character.only = TRUE) 
-
-pak::pak("TheWangLab/algatr")
-library(algatr)
 ```
 
 Set markdown preferences...
