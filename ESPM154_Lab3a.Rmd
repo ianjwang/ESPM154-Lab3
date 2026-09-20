@@ -35,7 +35,6 @@ library(algatr)
 Set markdown preferences...
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 ```
 
 --------------------------------------------
@@ -146,7 +145,8 @@ sample_count <- preview_gd(lyr = liz_lyr, coords = coords_proj, wdim = 7, fact =
 
 The output plot from the preview_gd() function shows us the points for our samples and the area covered by an example window. We can also plot the number of samples in each of the windows using the ggplot_count() function.
 ```{r}
-ggplot_count(sample_count)
+ggplot_count(sample_count) +
+  geom_sf(data = ca, fill = NA, color = "black", linewidth = 0.6)
 ```
 
 Now we use the window_gd() function to create the raster of genetic diversity.
@@ -168,7 +168,8 @@ wgd
 
 And plot the resulting raster...
 ```{r}
-ggplot_gd(wgd)
+ggplot_gd(wgd) +
+  geom_sf(data = ca, fill = NA, color = "black", linewidth = 0.6)
 ```
 
 Finally, generate a moving window map of heterozygosity for this dataset. If you look at the map of sample counts we produced above you'll notice that many of the windows have very few samples when we used 3x3 windows. So, for this map of heterozygosity, use windows that are 7x7 cells instead.
