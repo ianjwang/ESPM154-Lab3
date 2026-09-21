@@ -103,7 +103,7 @@ Now let's plot the points so we can see where they are.
 ```{r plot-points}
 # Get a California boundary
 ca <- st_as_sf(
-  map("state", "california", fill = TRUE, plot = FALSE)
+  maps::map("state", "california", fill = TRUE, plot = FALSE)
 )
 ca <- st_transform(ca, crs(coords_proj))
 
