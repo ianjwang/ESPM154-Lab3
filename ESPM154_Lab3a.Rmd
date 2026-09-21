@@ -25,7 +25,7 @@ pak::pak("TheWangLab/algatr")
 library(algatr)
 
 # Make a list of the packages we need, check whether they're installed, and install the ones we're missing...
-required.pkg <- c("sp", "gt", "wingen", "vcfR", "adegenet", "maps")
+required.pkg <- c("sp", "gt", "wingen", "vcfR", "adegenet", "maps", "sf", "terra")
 pkgs.not.installed <- required.pkg[!sapply(required.pkg, function(p) require(p, character.only=T))]
 if (length(pkgs.not.installed) > 0) install.packages(pkgs.not.installed, dependencies=TRUE)
 
