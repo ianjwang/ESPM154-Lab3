@@ -20,7 +20,7 @@ Load required packages...
 # Start with a clean slate...
 rm(list = ls()) 
 
-install.packages(c("pak", "fs", "s2", "V8", "RcppParallel"))
+install.packages(c("pak", "fs", "s2", "V8", "RcppParallel", "adegenet"))
 pak::pak("TheWangLab/algatr")
 library(algatr)
 
