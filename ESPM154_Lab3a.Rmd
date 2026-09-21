@@ -21,7 +21,7 @@ Load required packages...
 rm(list = ls()) 
 
 # Make a list of the packages we need, check whether they're installed, and install the ones we're missing...
-required.pkg <- c("sp", "gt", "wingen", "vcfR", "maps", "sf", "terra", "ggplot2")
+required.pkg <- c("sp", "gt", "wingen", "vcfR", "maps", "sf", "terra", "ggplot2", "adegenet")
 pkgs.not.installed <- required.pkg[!sapply(required.pkg, function(p) require(p, character.only=T))]
 if (length(pkgs.not.installed) > 0) install.packages(pkgs.not.installed, dependencies=NA)
 
@@ -84,6 +84,7 @@ Let's look at whether there appears to be a relationship between the frequency o
 ```{r af}
 plot(af[,4], popsums$He, xlab = "Allele Frequency", ylab = "Heterozygosity", pch = 20)
 ```
+
 **Take a moment to answer Question 4 on the assignment.**
 
 
