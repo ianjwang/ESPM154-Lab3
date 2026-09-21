@@ -20,7 +20,7 @@ Load required packages...
 # Start with a clean slate...
 rm(list = ls()) 
 
-install.packages(c("pak", "fs", "s2", "V8"))
+install.packages(c("pak", "fs", "s2", "V8", "RcppParallel"))
 pak::pak("TheWangLab/algatr")
 library(algatr)
 
@@ -43,38 +43,38 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Part 1: Examining VCF data in R ##
 
 Let's load an example VCF file in R. This one contains SNP data for samples from the western fence lizard (Sceloporus occidentalis).
-```{r, warning=FALSE}
+```{r load-vcf, warning=FALSE}
 load_algatr_example()
 ```
 
 This example dataset contains four objects, one of which is the VCF data. Let's take a look at some of the basic information for the VCF file.
-```{r, warning = F}
+```{r vcf, warning = F}
 head(liz_vcf)
 ```
 
 We can also call the head() function to show us the first few rows of each section of the liz_vcf object.
-```{r}
+```{r head-vcf}
 head(liz_vcf)
 ```
 
 **Take a moment to answer Question 1 on the assignment.**
 
 Let's also take a look at some of the genotype data.  Note that the first column is the format of the data and "GT" means genotype (there are other forms of data that can be included in a VCF files, but genotype data is the most common). The next columns are each one individual, and the rows are the SNP loci (one locus per row).
-```{r}
+```{r vcf-gt}
 liz_vcf@gt[1:10,1:9]
 ```
 
 **Take a moment to answer Question 2 on the assignment.**
 
 We can perform some basic calculations on the VCF data. For example, we can calculate the allele frequencies for any of the SNP loci using the `maf()` function.
-```{r}
+```{r maf}
 af <- maf(liz_vcf, element = 1)
 af[1:10,] # Show the allele frequencies for the first 10 loci
 ```
 **Take a moment to answer Question 3 on the assignment.**
 
 We can also calculate the heterozygosity at each SNP using the `gt.to.popsum()` function.
-```{r}
+```{r popsum}
 popsums <- gt.to.popsum(liz_vcf)
 popsums[1:10,] # Show the heterozygosities for the first 10 loci
 ```
@@ -82,7 +82,7 @@ popsums[1:10,] # Show the heterozygosities for the first 10 loci
 This table shows us the number of individuals with data for each SNP locus (n), the counts for the different alleles at each locus (Allele_counts), the heterozygosity at each locus (He), and the effective number of alleles at each locus (Ne, not to be confused with effective population size). 
 
 Let's look at whether there appears to be a relationship between the frequency of the major allele and the heterozygosity at each SNP.
-```{r}
+```{r af}
 plot(af[,4], popsums$He, xlab = "Allele Frequency", ylab = "Heterozygosity", pch = 20)
 ```
 **Take a moment to answer Question 4 on the assignment.**
@@ -91,7 +91,7 @@ plot(af[,4], popsums$He, xlab = "Allele Frequency", ylab = "Heterozygosity", pch
 ## Part 2: Mapping genetic diversity ##
 
 Next, let's look at how genetic diversity is distributed across the landscape. The first step is to project the coordinates in the data to a rectangular projection system. We will do that using the st_transform() function. 
-```{r}
+```{r coords}
 coords_longlat <- st_as_sf(liz_coords, coords = c("x", "y"), crs = "+proj=longlat") # Extract the sample coordinates as an sf object
 coords_proj <- st_transform(coords_longlat, crs = 3310) # Project the coordinates to the new projection system
 coords_proj
@@ -123,7 +123,7 @@ Arguments
  plot: whether to plot resulting raster with coords (defaults to FALSE)
 
 Here, we will create a raster layer with res = 50000. The resolution is in units corresponding to the system of the coordinates, which in this case means meters. So, res = 50000 gives us a raster with a resolution of 50 km.
-```{r}
+```{r coords-to-raster}
 liz_lyr <- coords_to_raster(coords_proj, res = 50000, buffer = 5, plot = TRUE)
 ```
 
@@ -140,12 +140,12 @@ Arguments
  plot: whether to plot results (default = TRUE)
 
 Let's start with a window size of 3x3 cells.
-```{r}
+```{r sample-count}
 sample_count <- preview_gd(lyr = liz_lyr, coords = coords_proj, wdim = 7, fact = 0)
 ```
 
 The output plot from the preview_gd() function shows us the points for our samples and the area covered by an example window. We can also plot the number of samples in each of the windows using the ggplot_count() function.
-```{r}
+```{r plot-count}
 ggplot_count(sample_count) +
   geom_sf(data = ca, fill = NA, color = "black", linewidth = 0.6)
 ```
@@ -162,19 +162,19 @@ Arguments
  wdim: dimensions (height x width) of window; if only one value is provided, a square window is created (defaults to 3 x 3 window)
  fact: aggregation factor to apply to lyr (defaults to 0)
 
-```{r, warning = F}
+```{r wgd, warning = F}
 wgd <- window_gd(liz_vcf, coords_proj, liz_lyr, stat = "pi", wdim = 3, fact = 0)
 wgd
 ```
 
 And plot the resulting raster...
-```{r}
+```{r plot-gd}
 ggplot_gd(wgd) +
   geom_sf(data = ca, fill = NA, color = "black", linewidth = 0.6)
 ```
 
 Finally, generate a moving window map of heterozygosity for this dataset. If you look at the map of sample counts we produced above you'll notice that many of the windows have very few samples when we used 3x3 windows. So, for this map of heterozygosity, use windows that are 7x7 cells instead.
-```{r, warning = F}
+```{r 3x3, warning = F}
 
 
 
