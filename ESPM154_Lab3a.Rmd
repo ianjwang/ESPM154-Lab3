@@ -20,12 +20,8 @@ Load required packages...
 # Start with a clean slate...
 rm(list = ls()) 
 
-install.packages(c("pak", "fs", "s2", "V8", "RcppParallel", "adegenet"))
-pak::pak("TheWangLab/algatr")
-library(algatr)
-
 # Make a list of the packages we need, check whether they're installed, and install the ones we're missing...
-required.pkg <- c("sp", "gt", "wingen", "vcfR", "adegenet", "maps", "sf", "terra", "ggplot2")
+required.pkg <- c("sp", "gt", "wingen", "vcfR", "maps", "sf", "terra", "ggplot2")
 pkgs.not.installed <- required.pkg[!sapply(required.pkg, function(p) require(p, character.only=T))]
 if (length(pkgs.not.installed) > 0) install.packages(pkgs.not.installed, dependencies=NA)
 
@@ -44,7 +40,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Let's load an example VCF file in R. This one contains SNP data for samples from the western fence lizard (Sceloporus occidentalis).
 ```{r load-vcf, warning=FALSE}
-load_algatr_example()
+load("liz_data.RData")
 ```
 
 This example dataset contains four objects, one of which is the VCF data. Let's take a look at some of the basic information for the VCF file.
@@ -57,14 +53,17 @@ We can also call the head() function to show us the first few rows of each secti
 head(liz_vcf)
 ```
 
-**Take a moment to answer Question 1 on the assignment.**
-
 Let's also take a look at some of the genotype data.  Note that the first column is the format of the data and "GT" means genotype (there are other forms of data that can be included in a VCF files, but genotype data is the most common). The next columns are each one individual, and the rows are the SNP loci (one locus per row).
 ```{r vcf-gt}
 liz_vcf@gt[1:10,1:9]
 ```
 
-**Take a moment to answer Question 2 on the assignment.**
+We can also see how many total rows and columns we have in the genotype matrix using the `dim()` function.
+```{r}
+dim(liz_vcf)
+```
+
+**Take a moment to answer Questions 1 and 2 on the assignment.**
 
 We can perform some basic calculations on the VCF data. For example, we can calculate the allele frequencies for any of the SNP loci using the `maf()` function.
 ```{r maf}
